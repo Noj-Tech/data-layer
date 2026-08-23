@@ -1,8 +1,3 @@
-دقیقاً. همین راه درستشه. کل README داخل **چهار بک‌تیک** و کدبلاک‌های داخلی با **سه بک‌تیک**.
-
-این‌بار هم README رو کامل‌تر می‌کنیم و **هر ۵ استراتژی فعلی** رو توضیح می‌دیم: `cache-first`، `network-first`، `cache-only`، `network-only` و `stale-while-revalidate`، به‌همراه usage واقعی `layer.run`.
-
-````
 # @noj-tech/data-layer
 
 A lightweight, framework-agnostic data layer for modern JavaScript and TypeScript applications.
