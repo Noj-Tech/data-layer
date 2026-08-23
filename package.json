@@ -1,0 +1,15 @@
+{
+  "name": "@noj-tech/data-layer",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "vitest",
+    "test:watch": "vitest --watch"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^29.1.1",
+    "vitest": "^4.1.10"
+  }
+}
