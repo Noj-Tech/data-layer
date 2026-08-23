@@ -1,11 +1,12 @@
 import type { RunContext } from "../foundation/types/RunContext";
 import type { LayerContext } from "../foundation/types/LayerContext";
+import type { CacheStore } from "../foundation/cache/CacheStore";
 
 export class Runner {
   constructor(private readonly layer: LayerContext) {}
 
   async run<T>(context: RunContext<T>): Promise<T> {
-    const cache = this.layer.get("cache");
+    const cache = this.layer.get<CacheStore>("cache");
     const strategy = context.cache?.strategy;
 
     // cache-first

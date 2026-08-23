@@ -1,15 +1,32 @@
 {
   "name": "@noj-tech/data-layer",
   "version": "1.0.0",
+  "description": "A lightweight, framework-agnostic data layer for modern JavaScript and TypeScript applications.",
   "type": "module",
-  "private": true,
+  "private": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "build": "tsc",
     "test": "vitest",
     "test:watch": "vitest --watch"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
-  }
+  },
+  "license": "MIT"
 }
