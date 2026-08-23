@@ -1,6 +1,6 @@
 {
   "name": "@noj-tech/data-layer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A lightweight, framework-agnostic data layer for modern JavaScript and TypeScript applications.",
   "type": "module",
   "private": false,

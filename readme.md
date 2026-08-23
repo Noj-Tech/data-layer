@@ -1,3 +1,8 @@
+دقیقاً. همین راه درستشه. کل README داخل **چهار بک‌تیک** و کدبلاک‌های داخلی با **سه بک‌تیک**.
+
+این‌بار هم README رو کامل‌تر می‌کنیم و **هر ۵ استراتژی فعلی** رو توضیح می‌دیم: `cache-first`، `network-first`، `cache-only`، `network-only` و `stale-while-revalidate`، به‌همراه usage واقعی `layer.run`.
+
+````
 # @noj-tech/data-layer
 
 A lightweight, framework-agnostic data layer for modern JavaScript and TypeScript applications.
@@ -8,9 +13,9 @@ A lightweight, framework-agnostic data layer for modern JavaScript and TypeScrip
 - TypeScript-first
 - Modular and extensible architecture
 - Built-in caching support
-- Cache-first execution strategy
+- Multiple cache execution strategies
 - Independent from Axios, Fetch, or any specific HTTP client
-- Designed for Vue, React, Nuxt, Node.js, and other JavaScript environments
+- Supports Vue, React, Nuxt, Node.js, and other JavaScript environments
 - Unit tested with Vitest
 
 ## Installation
@@ -21,11 +26,29 @@ npm install @noj-tech/data-layer
 
 ## Basic Usage
 
+Create a data layer:
+
 ```ts
 import { createLayer } from "@noj-tech/data-layer";
 
 const layer = createLayer();
 ```
+
+The layer can execute any asynchronous operation through the `run` API.
+
+```ts
+const result = await layer.run({
+  execute: async () => {
+    return fetchUsers();
+  },
+});
+```
+
+The data layer does not care how `fetchUsers()` is implemented.
+
+It can use Fetch, Axios, GraphQL, WebSocket clients, database calls, or any custom data source.
+
+---
 
 ## Architecture
 
@@ -50,13 +73,15 @@ Application
     └── Custom Modules
 ```
 
-The core does not depend on a specific framework, HTTP client, or storage solution.
+The core does not depend on a specific framework, HTTP client, or storage implementation.
+
+---
 
 ## Cache
 
 Caching is a first-class capability of the data layer.
 
-A cache can be registered as a module:
+A cache store can be registered on the layer:
 
 ```ts
 const layer = createLayer();
@@ -64,11 +89,49 @@ const layer = createLayer();
 layer.register("cache", cache);
 ```
 
-The runner can then use the registered cache during data operations.
+The registered cache is then available to the runner during data operations.
 
-### Cache-First Strategy
+A cache store implements the following interface:
 
-The cache-first strategy checks the cache before executing the underlying operation.
+```ts
+export interface CacheStore {
+  has(key: string): Promise<boolean>;
+
+  get<T>(key: string): Promise<T | undefined>;
+
+  set<T>(key: string, value: T): Promise<void>;
+
+  remove(key: string): Promise<boolean>;
+
+  clear(): Promise<void>;
+}
+```
+
+The package currently includes cache stores such as:
+
+- MemoryStore
+- LocalStorageStore
+- IndexedDBStore
+
+---
+
+## Cache Strategies
+
+The runner supports multiple execution strategies.
+
+### Available Strategies
+
+- `cache-first`
+- `network-first`
+- `cache-only`
+- `network-only`
+- `stale-while-revalidate`
+
+---
+
+## Cache-First
+
+`cache-first` checks the cache before executing the underlying operation.
 
 ```text
 Request
@@ -81,7 +144,7 @@ Check Cache
    └── Miss
         │
         ▼
-    Execute Operation
+   Execute Operation
         │
         ▼
     Store Result
@@ -90,7 +153,272 @@ Check Cache
     Return Data
 ```
 
-This allows applications to reduce unnecessary requests and improve performance.
+Usage:
+
+```ts
+const result = await layer.run({
+  key: "users",
+  cache: {
+    strategy: "cache-first",
+  },
+  execute: () => fetchUsers(),
+});
+```
+
+Behavior:
+
+1. Check the cache.
+2. If cached data exists, return it immediately.
+3. If there is no cached data, execute the operation.
+4. Store the result in the cache.
+5. Return the result.
+
+This strategy is useful when cached data should be preferred and network requests should only happen when necessary.
+
+---
+
+## Network-First
+
+`network-first` tries the underlying operation first.
+
+If the operation succeeds, the result is stored in the cache.
+
+If the operation fails, the runner attempts to return cached data.
+
+```text
+Request
+   │
+   ▼
+Execute Operation
+   │
+   ├── Success ─────► Store Result ─────► Return Data
+   │
+   └── Failure
+        │
+        ▼
+    Check Cache
+        │
+        ├── Hit ─────► Return Cached Data
+        │
+        └── Miss ────► Throw Error
+```
+
+Usage:
+
+```ts
+const result = await layer.run({
+  key: "users",
+  cache: {
+    strategy: "network-first",
+  },
+  execute: () => fetchUsers(),
+});
+```
+
+Behavior:
+
+1. Execute the operation.
+2. If successful, store the result in the cache.
+3. Return the fresh result.
+4. If the operation fails, check the cache.
+5. If cached data exists, return it.
+6. If no cached data exists, rethrow the original error.
+
+This strategy is useful when fresh data is preferred but cached data can act as a fallback.
+
+---
+
+## Cache-Only
+
+`cache-only` never executes the underlying operation when a cache key and cache are available.
+
+```text
+Request
+   │
+   ▼
+Check Cache
+   │
+   ├── Hit ──────► Return Cached Data
+   │
+   └── Miss ─────► Throw Cache Miss Error
+```
+
+Usage:
+
+```ts
+const result = await layer.run({
+  key: "users",
+  cache: {
+    strategy: "cache-only",
+  },
+  execute: () => fetchUsers(),
+});
+```
+
+If the cache does not contain the requested key, an error is thrown:
+
+```text
+Cache miss for key: users
+```
+
+This strategy is useful for offline-first scenarios or when network access must not be used.
+
+---
+
+## Network-Only
+
+`network-only` always executes the underlying operation and does not use cached data.
+
+```text
+Request
+   │
+   ▼
+Execute Operation
+   │
+   ▼
+Return Result
+```
+
+Usage:
+
+```ts
+const result = await layer.run({
+  key: "users",
+  cache: {
+    strategy: "network-only",
+  },
+  execute: () => fetchUsers(),
+});
+```
+
+The cache is ignored.
+
+This strategy is useful when the application always requires fresh data.
+
+---
+
+## Stale-While-Revalidate
+
+`stale-while-revalidate` returns cached data immediately when available, while refreshing the data in the background.
+
+```text
+Request
+   │
+   ▼
+Check Cache
+   │
+   ├── Hit
+   │    │
+   │    ├──► Return Cached Data
+   │    │
+   │    └──► Revalidate in Background
+   │             │
+   │             ▼
+   │          Store Result
+   │
+   └── Miss
+        │
+        ▼
+   Execute Operation
+        │
+        ▼
+    Store Result
+        │
+        ▼
+    Return Data
+```
+
+Usage:
+
+```ts
+const result = await layer.run({
+  key: "users",
+  cache: {
+    strategy: "stale-while-revalidate",
+  },
+  execute: () => fetchUsers(),
+});
+```
+
+Behavior when cached data exists:
+
+1. Return cached data immediately.
+2. Execute the operation in the background.
+3. Store the fresh result in the cache.
+4. The background request does not affect the already returned response if it fails.
+
+When cached data does not exist:
+
+1. Execute the operation normally.
+2. Store the result.
+3. Return the result.
+
+This strategy is useful when fast responses are more important than waiting for fresh data.
+
+---
+
+## Cache TTL
+
+The execution context can optionally provide a TTL value for cache implementations that support expiration.
+
+```ts
+const result = await layer.run({
+  key: "users",
+  cache: {
+    strategy: "cache-first",
+    ttl: 60_000,
+  },
+  execute: () => fetchUsers(),
+});
+```
+
+The TTL value is expressed in milliseconds.
+
+```ts
+60_000 // 60 seconds
+```
+
+The cache store is responsible for deciding how TTL is handled.
+
+---
+
+## Complete Example
+
+```ts
+import {
+  createLayer,
+  MemoryStore,
+} from "@noj-tech/data-layer";
+
+const layer = createLayer();
+
+const cache = new MemoryStore();
+
+layer.register("cache", cache);
+
+const users = await layer.run({
+  key: "users",
+  cache: {
+    strategy: "cache-first",
+    ttl: 60_000,
+  },
+  execute: async () => {
+    const response = await fetch("/api/users");
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch users");
+    }
+
+    return response.json();
+  },
+});
+```
+
+The first request executes the network operation and stores the result.
+
+Subsequent requests can return the cached result according to the selected strategy.
+
+---
 
 ## Framework Agnostic
 
@@ -98,17 +426,7 @@ This allows applications to reduce unnecessary requests and improve performance.
 
 You can use any HTTP client or data source you prefer.
 
-For example:
-
-```ts
-const api = {
-  async getUsers() {
-    return axios.get("/users");
-  },
-};
-```
-
-Or:
+### Fetch
 
 ```ts
 const api = {
@@ -120,7 +438,21 @@ const api = {
 };
 ```
 
-The data layer manages the architecture around these operations without controlling how the actual request is performed.
+### Axios
+
+```ts
+const api = {
+  async getUsers() {
+    const response = await axios.get("/users");
+
+    return response.data;
+  },
+};
+```
+
+The data layer manages the execution and caching architecture without controlling how the actual request is performed.
+
+---
 
 ## Extensibility
 
@@ -138,6 +470,8 @@ Possible modules include:
 
 The core remains intentionally small while applications can add only the functionality they need.
 
+---
+
 ## Example
 
 ```ts
@@ -149,9 +483,14 @@ layer.register("cache", cache);
 
 const result = await layer.run({
   key: "users",
+  cache: {
+    strategy: "cache-first",
+  },
   execute: () => fetchUsers(),
 });
 ```
+
+---
 
 ## Testing
 
@@ -168,6 +507,14 @@ Or:
 ```bash
 npx vitest
 ```
+
+Run tests in watch mode:
+
+```bash
+npm run test:watch
+```
+
+---
 
 ## Development
 
@@ -195,6 +542,8 @@ Build the package:
 npm run build
 ```
 
+---
+
 ## Design Goals
 
 The main goals of `@noj-tech/data-layer` are:
@@ -203,8 +552,11 @@ The main goals of `@noj-tech/data-layer` are:
 2. Remain framework-agnostic.
 3. Avoid coupling data management to a specific HTTP client.
 4. Make caching composable.
-5. Provide a predictable and extensible API.
-6. Make the package reusable across different applications and environments.
+5. Provide predictable execution strategies.
+6. Provide a modular and extensible architecture.
+7. Make the package reusable across different applications and environments.
+
+---
 
 ## @noj-tech Ecosystem
 
@@ -219,6 +571,9 @@ Related packages can follow the same naming convention:
 
 Each package should have a focused responsibility and remain independently usable whenever possible.
 
+---
+
 ## License
 
 MIT
+````
