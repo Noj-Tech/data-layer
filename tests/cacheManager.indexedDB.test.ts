@@ -13,18 +13,18 @@ describe("CacheManager + IndexedDBStore", () => {
     const cache = createCache();
 
     await cache.set("users", {
-      users: ["ali", "reza"],
+      users: ["Daniyal", "Mahdis"],
     });
 
     expect(await cache.get("users")).toEqual({
-      users: ["ali", "reza"],
+      users: ["Daniyal", "Mahdis"],
     });
   });
 
   it("should return undefined for an expired value", async () => {
     const cache = createCache();
 
-    await cache.set("users", ["ali"], 20);
+    await cache.set("users", ["Daniyal"], 20);
 
     await new Promise((resolve) => setTimeout(resolve, 30));
 
@@ -34,7 +34,7 @@ describe("CacheManager + IndexedDBStore", () => {
   it("should report false for an expired value", async () => {
     const cache = createCache();
 
-    await cache.set("users", ["ali"], 20);
+    await cache.set("users", ["Daniyal"], 20);
 
     await new Promise((resolve) => setTimeout(resolve, 30));
 
@@ -44,9 +44,9 @@ describe("CacheManager + IndexedDBStore", () => {
   it("should keep a value without TTL", async () => {
     const cache = createCache();
 
-    await cache.set("users", ["ali"]);
+    await cache.set("users", ["Daniyal"]);
 
-    expect(await cache.get("users")).toEqual(["ali"]);
+    expect(await cache.get("users")).toEqual(["Daniyal"]);
   });
 
   it("should remove an expired entry from IndexedDB", async () => {
@@ -56,7 +56,7 @@ describe("CacheManager + IndexedDBStore", () => {
 
     const cache = new CacheManager(store);
 
-    await cache.set("users", ["ali"], 20);
+    await cache.set("users", ["Daniyal"], 20);
 
     await new Promise((resolve) => setTimeout(resolve, 30));
 

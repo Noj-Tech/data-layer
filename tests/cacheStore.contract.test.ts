@@ -25,11 +25,11 @@ function runCacheStoreContract(
 
     it("should store and retrieve a value", async () => {
       await store.set("users", {
-        users: ["ali", "reza"],
+        users: ["Daniyal", "Mahdis"],
       });
 
       expect(await store.get("users")).toEqual({
-        users: ["ali", "reza"],
+        users: ["Daniyal", "Mahdis"],
       });
     });
 
@@ -40,20 +40,20 @@ function runCacheStoreContract(
     it("should report whether a key exists", async () => {
       expect(await store.has("users")).toBe(false);
 
-      await store.set("users", ["ali"]);
+      await store.set("users", ["Daniyal"]);
 
       expect(await store.has("users")).toBe(true);
     });
 
     it("should overwrite an existing value", async () => {
-      await store.set("users", ["ali"]);
-      await store.set("users", ["reza"]);
+      await store.set("users", ["Daniyal"]);
+      await store.set("users", ["Mahdis"]);
 
-      expect(await store.get("users")).toEqual(["reza"]);
+      expect(await store.get("users")).toEqual(["Mahdis"]);
     });
 
     it("should remove a value", async () => {
-      await store.set("users", ["ali"]);
+      await store.set("users", ["Daniyal"]);
 
       expect(await store.remove("users")).toBe(true);
       expect(await store.get("users")).toBeUndefined();
@@ -65,7 +65,7 @@ function runCacheStoreContract(
     });
 
     it("should clear all values", async () => {
-      await store.set("users", ["ali"]);
+      await store.set("users", ["Daniyal"]);
       await store.set("posts", ["post-1"]);
 
       await store.clear();
@@ -77,7 +77,7 @@ function runCacheStoreContract(
     });
 
     it("should keep different keys isolated", async () => {
-      await store.set("users", ["ali"]);
+      await store.set("users", ["Daniyal"]);
       await store.set("posts", ["post-1"]);
 
       await store.remove("users");

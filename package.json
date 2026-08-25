@@ -1,6 +1,6 @@
 {
   "name": "@noj-tech/data-layer",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A lightweight, framework-agnostic data layer for modern JavaScript and TypeScript applications.",
   "type": "module",
   "private": false,
@@ -17,6 +17,39 @@
     "README.md",
     "LICENSE"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Noj-Tech/data-layer.git"
+  },
+  "homepage": "https://github.com/Noj-Tech/data-layer",
+  "bugs": {
+    "url": "https://github.com/Noj-Tech/data-layer/issues"
+  },
+   "keywords": [
+    "data-layer",
+    "data",
+    "cache",
+    "caching",
+    "cache-first",
+    "network-first",
+    "cache-only",
+    "network-only",
+    "stale-while-revalidate",
+    "typescript",
+    "javascript",
+    "vue",
+    "react",
+    "nuxt",
+    "node",
+    "indexeddb",
+    "localstorage",
+    "api",
+    "framework-agnostic"
+  ],
+  "author": {
+    "name": "Noj Tech",
+    "url": "https://nojtech.id"
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest",

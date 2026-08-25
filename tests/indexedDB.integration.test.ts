@@ -6,13 +6,13 @@ describe("IndexedDBStore integration", () => {
     const store = new IndexedDBStore();
 
     await store.set("users", {
-      users: ["ali", "reza"],
+      users: ["Daniyal", "Mahdis"],
     });
 
     const result = await store.get("users");
 
     expect(result).toEqual({
-      users: ["ali", "reza"],
+      users: ["Daniyal", "Mahdis"],
     });
   });
 
@@ -20,7 +20,7 @@ describe("IndexedDBStore integration", () => {
     const store1 = new IndexedDBStore();
 
     await store1.set("users", {
-      users: ["ali", "reza"],
+      users: ["Daniyal", "Mahdis"],
     });
 
     const store2 = new IndexedDBStore();
@@ -28,14 +28,14 @@ describe("IndexedDBStore integration", () => {
     const result = await store2.get("users");
 
     expect(result).toEqual({
-      users: ["ali", "reza"],
+      users: ["Daniyal", "Mahdis"],
     });
   });
 
   it("should remove values", async () => {
     const store = new IndexedDBStore();
 
-    await store.set("users", ["ali"]);
+    await store.set("users", ["Daniyal"]);
 
     expect(await store.remove("users")).toBe(true);
     expect(await store.get("users")).toBeUndefined();
@@ -44,7 +44,7 @@ describe("IndexedDBStore integration", () => {
   it("should clear all values", async () => {
     const store = new IndexedDBStore();
 
-    await store.set("users", ["ali"]);
+    await store.set("users", ["Daniyal"]);
     await store.set("posts", ["post-1"]);
 
     await store.clear();
