@@ -9,6 +9,8 @@ A lightweight, framework-agnostic data layer for modern JavaScript and TypeScrip
 - Modular and extensible architecture
 - Built-in caching support
 - Multiple cache execution strategies
+- Cache TTL support
+- Built-in IndexedDB, LocalStorage, and Memory stores
 - Independent from Axios, Fetch, or any specific HTTP client
 - Supports Vue, React, Nuxt, Node.js, and other JavaScript environments
 - Unit tested with Vitest
@@ -45,14 +47,84 @@ It can use Fetch, Axios, GraphQL, WebSocket clients, database calls, or any cust
 
 ---
 
+## Default Export
+
+The package also provides a ready-to-use default layer instance.
+
+```ts
+import layer from "@noj-tech/data-layer";
+
+const result = await layer.run({
+  execute: async () => {
+    return fetchUsers();
+  },
+});
+```
+
+Use `createLayer()` when you need your own layer instance or custom configuration.
+
+---
+
+## TypeScript
+
+`@noj-tech/data-layer` is TypeScript-first and exposes its public types from the package root.
+
+```ts
+import {
+  createLayer,
+  type LayerOptions,
+  type LayerContext,
+  type RunContext,
+  type RuntimeAPI,
+  type LayerModule,
+  type CacheOptions,
+  type CacheStore,
+  type CacheStrategy,
+} from "@noj-tech/data-layer";
+```
+
+This allows TypeScript applications to use the package without importing internal files.
+
+For example:
+
+```ts
+const strategy: CacheStrategy = "cache-first";
+
+const options: LayerOptions = {
+  // ...
+};
+```
+
+Custom modules can also use the public `LayerModule` type:
+
+```ts
+import type { LayerModule } from "@noj-tech/data-layer";
+
+const myModule: LayerModule = {
+  name: "my-module",
+
+  install(context) {
+    // ...
+  },
+};
+```
+
+Only types that are intended to be part of the public API are exported from the package root.
+
+Internal implementation details such as the runner and registry are not part of the public API.
+
+---
+
 ## Architecture
 
 The package provides a small runtime for managing data-related operations.
 
 ```text
 Application
+
     │
     ▼
+
 ┌─────────────────────┐
 │     Data Layer      │
 ├─────────────────────┤
@@ -61,6 +133,7 @@ Application
 │      Modules        │
 │       Cache         │
 └─────────────────────┘
+
     │
     ├── API / HTTP
     ├── Cache
@@ -76,37 +149,71 @@ The core does not depend on a specific framework, HTTP client, or storage implem
 
 Caching is a first-class capability of the data layer.
 
-A cache store can be registered on the layer:
+The package provides a cache module and multiple cache stores.
+
+The default cache store is IndexedDB.
+
+Available stores include:
+
+- `IndexedDBStore`
+- `LocalStorageStore`
+- `MemoryStore`
+
+A cache can be accessed through the layer:
 
 ```ts
-const layer = createLayer();
-
-layer.register("cache", cache);
+const cache = layer.get("cache");
 ```
 
-The registered cache is then available to the runner during data operations.
-
-A cache store implements the following interface:
+The cache service provides:
 
 ```ts
-export interface CacheStore {
-  has(key: string): Promise<boolean>;
+await cache.set("users", users);
 
-  get<T>(key: string): Promise<T | undefined>;
+const users = await cache.get<User[]>("users");
 
-  set<T>(key: string, value: T): Promise<void>;
+await cache.remove("users");
 
-  remove(key: string): Promise<boolean>;
-
-  clear(): Promise<void>;
-}
+await cache.clear();
 ```
 
-The package currently includes cache stores such as:
+---
 
-- MemoryStore
-- LocalStorageStore
-- IndexedDBStore
+## Cache Stores
+
+### IndexedDBStore
+
+`IndexedDBStore` provides persistent browser storage using IndexedDB.
+
+It is the default storage used by the data layer.
+
+```ts
+import { IndexedDBStore } from "@noj-tech/data-layer";
+
+const store = new IndexedDBStore();
+```
+
+### LocalStorageStore
+
+`LocalStorageStore` uses the browser's Local Storage API.
+
+```ts
+import { LocalStorageStore } from "@noj-tech/data-layer";
+
+const store = new LocalStorageStore();
+```
+
+### MemoryStore
+
+`MemoryStore` keeps cached data in memory.
+
+```ts
+import { MemoryStore } from "@noj-tech/data-layer";
+
+const store = new MemoryStore();
+```
+
+Memory storage is useful for temporary data and testing.
 
 ---
 
@@ -130,21 +237,27 @@ The runner supports multiple execution strategies.
 
 ```text
 Request
+
    │
    ▼
+
 Check Cache
+
    │
    ├── Hit ──────► Return Cached Data
    │
    └── Miss
         │
         ▼
+
    Execute Operation
         │
         ▼
+
     Store Result
         │
         ▼
+
     Return Data
 ```
 
@@ -153,9 +266,11 @@ Usage:
 ```ts
 const result = await layer.run({
   key: "users",
+
   cache: {
     strategy: "cache-first",
   },
+
   execute: () => fetchUsers(),
 });
 ```
@@ -182,16 +297,21 @@ If the operation fails, the runner attempts to return cached data.
 
 ```text
 Request
+
    │
    ▼
+
 Execute Operation
+
    │
    ├── Success ─────► Store Result ─────► Return Data
    │
    └── Failure
         │
         ▼
+
     Check Cache
+
         │
         ├── Hit ─────► Return Cached Data
         │
@@ -203,9 +323,11 @@ Usage:
 ```ts
 const result = await layer.run({
   key: "users",
+
   cache: {
     strategy: "network-first",
   },
+
   execute: () => fetchUsers(),
 });
 ```
@@ -229,9 +351,12 @@ This strategy is useful when fresh data is preferred but cached data can act as 
 
 ```text
 Request
+
    │
    ▼
+
 Check Cache
+
    │
    ├── Hit ──────► Return Cached Data
    │
@@ -243,9 +368,11 @@ Usage:
 ```ts
 const result = await layer.run({
   key: "users",
+
   cache: {
     strategy: "cache-only",
   },
+
   execute: () => fetchUsers(),
 });
 ```
@@ -266,11 +393,15 @@ This strategy is useful for offline-first scenarios or when network access must 
 
 ```text
 Request
+
    │
    ▼
+
 Execute Operation
+
    │
    ▼
+
 Return Result
 ```
 
@@ -279,9 +410,11 @@ Usage:
 ```ts
 const result = await layer.run({
   key: "users",
+
   cache: {
     strategy: "network-only",
   },
+
   execute: () => fetchUsers(),
 });
 ```
@@ -298,28 +431,34 @@ This strategy is useful when the application always requires fresh data.
 
 ```text
 Request
+
    │
    ▼
+
 Check Cache
+
    │
    ├── Hit
    │    │
    │    ├──► Return Cached Data
    │    │
    │    └──► Revalidate in Background
-   │             │
-   │             ▼
-   │          Store Result
+   │                 │
+   │                 ▼
+   │              Store Result
    │
    └── Miss
         │
         ▼
+
    Execute Operation
         │
         ▼
+
     Store Result
         │
         ▼
+
     Return Data
 ```
 
@@ -328,9 +467,11 @@ Usage:
 ```ts
 const result = await layer.run({
   key: "users",
+
   cache: {
     strategy: "stale-while-revalidate",
   },
+
   execute: () => fetchUsers(),
 });
 ```
@@ -340,7 +481,7 @@ Behavior when cached data exists:
 1. Return cached data immediately.
 2. Execute the operation in the background.
 3. Store the fresh result in the cache.
-4. The background request does not affect the already returned response if it fails.
+4. A background request failure does not affect the already returned response.
 
 When cached data does not exist:
 
@@ -354,26 +495,114 @@ This strategy is useful when fast responses are more important than waiting for 
 
 ## Cache TTL
 
-The execution context can optionally provide a TTL value for cache implementations that support expiration.
+Cache entries can optionally have a TTL.
+
+TTL values are expressed in milliseconds.
 
 ```ts
 const result = await layer.run({
   key: "users",
+
   cache: {
     strategy: "cache-first",
     ttl: 60_000,
   },
+
   execute: () => fetchUsers(),
 });
 ```
-
-The TTL value is expressed in milliseconds.
 
 ```ts
 60_000 // 60 seconds
 ```
 
-The cache store is responsible for deciding how TTL is handled.
+The TTL is handled by the data layer's cache manager.
+
+When an entry expires, it is treated as a cache miss and removed from the cache when accessed.
+
+For example:
+
+```ts
+await cache.set(
+  "access_token",
+  token,
+  7 * 24 * 60 * 60 * 1000,
+);
+```
+
+An entry without a TTL does not expire automatically:
+
+```ts
+await cache.set("refresh_token", refreshToken);
+```
+
+It remains available until it is explicitly removed or the underlying storage is cleared.
+
+---
+
+## Custom Cache Stores
+
+The cache system is based on the `CacheStore` interface.
+
+```ts
+import type { CacheStore } from "@noj-tech/data-layer";
+
+const customStore: CacheStore = {
+  async has(key) {
+    // ...
+  },
+
+  async get(key) {
+    // ...
+  },
+
+  async set(key, value) {
+    // ...
+  },
+
+  async remove(key) {
+    // ...
+  },
+
+  async clear() {
+    // ...
+  },
+};
+```
+
+This allows applications to implement their own storage mechanism without changing the runner or cache architecture.
+
+---
+
+## Custom Modules
+
+The package uses a modular architecture.
+
+Custom modules can implement the public `LayerModule` interface:
+
+```ts
+import type { LayerModule } from "@noj-tech/data-layer";
+
+const myModule: LayerModule = {
+  name: "my-module",
+
+  install(context) {
+    // Register custom functionality
+  },
+};
+```
+
+Modules can be used to extend the data layer without coupling additional functionality to the core runtime.
+
+Possible modules include:
+
+- Cache
+- Storage
+- API clients
+- Persistence
+- Logging
+- Authentication
+- Custom functionality
 
 ---
 
@@ -382,21 +611,21 @@ The cache store is responsible for deciding how TTL is handled.
 ```ts
 import {
   createLayer,
-  MemoryStore,
+  type CacheStrategy,
 } from "@noj-tech/data-layer";
 
 const layer = createLayer();
 
-const cache = new MemoryStore();
-
-layer.register("cache", cache);
+const strategy: CacheStrategy = "cache-first";
 
 const users = await layer.run({
   key: "users",
+
   cache: {
-    strategy: "cache-first",
+    strategy,
     ttl: 60_000,
   },
+
   execute: async () => {
     const response = await fetch("/api/users");
 
@@ -409,7 +638,7 @@ const users = await layer.run({
 });
 ```
 
-The first request executes the network operation and stores the result.
+The first request executes the underlying operation and stores the result.
 
 Subsequent requests can return the cached result according to the selected strategy.
 
@@ -427,7 +656,6 @@ You can use any HTTP client or data source you prefer.
 const api = {
   async getUsers() {
     const response = await fetch("/users");
-
     return response.json();
   },
 };
@@ -439,7 +667,6 @@ const api = {
 const api = {
   async getUsers() {
     const response = await axios.get("/users");
-
     return response.data;
   },
 };
@@ -453,37 +680,7 @@ The data layer manages the execution and caching architecture without controllin
 
 The architecture is based on modules and registries, allowing additional capabilities to be added without tightly coupling them to the core.
 
-Possible modules include:
-
-- Cache
-- Storage
-- API clients
-- Persistence
-- Logging
-- Authentication
-- Custom execution strategies
-
 The core remains intentionally small while applications can add only the functionality they need.
-
----
-
-## Example
-
-```ts
-import { createLayer } from "@noj-tech/data-layer";
-
-const layer = createLayer();
-
-layer.register("cache", cache);
-
-const result = await layer.run({
-  key: "users",
-  cache: {
-    strategy: "cache-first",
-  },
-  execute: () => fetchUsers(),
-});
-```
 
 ---
 
@@ -549,7 +746,9 @@ The main goals of `@noj-tech/data-layer` are:
 4. Make caching composable.
 5. Provide predictable execution strategies.
 6. Provide a modular and extensible architecture.
-7. Make the package reusable across different applications and environments.
+7. Support multiple storage implementations.
+8. Provide a TypeScript-friendly public API.
+9. Make the package reusable across different applications and environments.
 
 ---
 
@@ -561,6 +760,7 @@ Related packages can follow the same naming convention:
 
 ```text
 @noj-tech/data-layer
+
 @noj-tech/...
 ```
 
@@ -571,4 +771,3 @@ Each package should have a focused responsibility and remain independently usabl
 ## License
 
 MIT
-````
